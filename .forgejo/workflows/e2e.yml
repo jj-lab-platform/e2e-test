@@ -1,0 +1,26 @@
+name: jjlab registry e2e
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run e2e suites
+        run: ./run-all.sh
+        env:
+          BASE: ${{ vars.JJLAB_BASE }}
+          WRITE_TOKEN: ${{ secrets.JJLAB_WRITE_TOKEN }}
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jjlab-e2e-artifacts
+          path: artifacts/
+          if-no-files-found: ignore
