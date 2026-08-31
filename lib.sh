@@ -25,6 +25,17 @@ REG_HOST="${REGISTRY_BASE#*://}"
 REG_HOST="${REG_HOST%%/*}"
 export REG_HOST
 
+# SwiftPM's package-registry `login` requires HTTPS (no --allow-insecure-http
+# on that subcommand), so the swift suite targets the wildcard nip.io https
+# face of *the same* harness instance. `<name>.<ns>.svc.cluster.local` maps to
+# `<name>.<ns>.10.199.64.20.nip.io` via the host Caddy gateway (wildcard TLS,
+# CA bundled into the runners). Explicitly overridable via SWIFT_BASE.
+if [ -z "${SWIFT_BASE:-}" ] && [[ "$API" == http://*.svc.cluster.local ]]; then
+  SWIFT_BASE="https://${API#http://}"
+  SWIFT_BASE="${SWIFT_BASE%.svc.cluster.local}.10.199.64.20.nip.io"
+fi
+export SWIFT_BASE
+
 # jjlab token auth: JJLAB_TOKENS="devtoken=write" (single write token).
 # Anonymous = read-only. Write paths must present the write token.
 WRITE_TOKEN="${WRITE_TOKEN:-devtoken}"

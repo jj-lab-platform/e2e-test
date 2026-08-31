@@ -5,9 +5,10 @@ cd "$(dirname "$0")"
 source ../../lib.sh
 have swift || { skip "swift not installed"; exit 0; }
 
-# The https ingress trusts the nip.io CA now installed system-wide. Use the
-# https registry URL for both `set` and `publish`.
-REG="https://jj-lab.temp.10.199.64.20.nip.io/pkgs/swift"
+# SwiftPM `login` requires HTTPS. Target the harness instance's wildcard
+# nip.io https face (SWIFT_BASE is derived in lib.sh from $BASE), NOT the live
+# jj-lab. The nip.io CA is bundled into the runner image.
+REG="${SWIFT_BASE:-$API}/pkgs/swift"
 
 D=$(dir swift-b)
 CFG="$D/.swiftpm-cfg"; SEC="$D/.swiftpm-sec"; CCH="$D/.swiftpm-cache"
