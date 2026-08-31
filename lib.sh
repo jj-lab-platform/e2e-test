@@ -19,6 +19,11 @@ set -uo pipefail
 # the registry is not shadowed by the catch-all.
 REGISTRY_BASE="${REGISTRY_BASE:-${BASE:-http://jj-lab.temp.svc.cluster.local}}"
 API="$REGISTRY_BASE"
+# Hostname (no scheme/port) derived from the target, so suites that need a
+# bare registry host for OCI/skopeo URLs follow whatever the harness points at.
+REG_HOST="${REGISTRY_BASE#*://}"
+REG_HOST="${REG_HOST%%/*}"
+export REG_HOST
 
 # jjlab token auth: JJLAB_TOKENS="devtoken=write" (single write token).
 # Anonymous = read-only. Write paths must present the write token.

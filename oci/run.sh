@@ -6,7 +6,7 @@ source ../lib.sh
 source ../flag.sh
 
 section "oci"
-R="jj-lab.temp.svc.cluster.local"
+R="${REG_HOST}"
 
 have skopeo || { skip "skopeo not installed"; echo "$PASS $FAIL $SKIP" > "$WORK/oci.result"; summary "oci"; exit 0; }
 

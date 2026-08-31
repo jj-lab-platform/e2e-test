@@ -38,7 +38,7 @@ code=$(curl_anon -o /dev/null -w '%{http_code}' "$AO/")
 assert_code "OCI anon ping 401" 401 "$code"
 CH=$(curl_anon -I "$AO/" 2>/dev/null | grep -i www-authenticate | head -1)
 assert_contains "OCI WWW-Authenticate challenge" "$CH" 'Bearer realm'
-assert_contains "OCI realm uses self_base" "$CH" 'jj-lab.temp.svc.cluster.local'
+assert_contains "OCI realm uses self_base" "$CH" "$REG_HOST"
 TOK=$(curl_api "$API/v2/token?service=oci-registry&scope=repository:x-auth-oci:push,pull" -H "Authorization: token $WRITE" | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])" 2>/dev/null)
 [ -n "$TOK" ] && pass "OCI token issued" || fail "OCI token issued"
 echo -n "auth-blob-data" > "$WORK/auth-blob"
@@ -61,12 +61,12 @@ assert_status_in "X-NuGet-ApiKey push" "$code" "200 201"
 # 7) skopeo push with creds OK; anonymous denied. Source is our own registry's
 #    pull-through cache of alpine (client never talks to docker.io directly).
 if have skopeo && [ "$(flag DOCKER_OK)" = "1" ]; then
-  if skopeo copy --src-tls-verify=false --dest-tls-verify=false --dest-creds "x:$WRITE" "docker://jj-lab.temp.svc.cluster.local/library/alpine:latest" "docker://jj-lab.temp.svc.cluster.local/x-auth/alpine:ok" >/dev/null 2>&1; then
+  if skopeo copy --src-tls-verify=false --dest-tls-verify=false --dest-creds "x:$WRITE" "docker://$REG_HOST/library/alpine:latest" "docker://$REG_HOST/x-auth/alpine:ok" >/dev/null 2>&1; then
     pass "skopeo push with creds"
   else
     fail "skopeo push with creds"
   fi
-  if skopeo copy --src-tls-verify=false --dest-tls-verify=false "docker://jj-lab.temp.svc.cluster.local/library/alpine:latest" "docker://jj-lab.temp.svc.cluster.local/x-auth/alpine:denied" >/dev/null 2>&1; then
+  if skopeo copy --src-tls-verify=false --dest-tls-verify=false "docker://$REG_HOST/library/alpine:latest" "docker://$REG_HOST/x-auth/alpine:denied" >/dev/null 2>&1; then
     fail "skopeo push anon should fail"
   else
     pass "skopeo push anon denied"

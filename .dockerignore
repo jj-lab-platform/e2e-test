@@ -1,0 +1,8 @@
+.git
+artifacts
+README.md
+AGENTS.md
+.forgejo
+.gitignore
+.dockerignore
+deploy/runners

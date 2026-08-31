@@ -37,14 +37,37 @@ Suites (17): `net-preflight`, `npm`, `pypi`, `cargo`, `go`, `maven`, `composer`,
 
 ## Run
 
+Two modes:
+
+### 1. In-process (one container per CLI, rotating a throwaway jjlab)
+
 ```sh
-# all suites
+# build the per-CLI runner images (aliyun mirrors), then run
+./deploy/build-runners.sh
+./deploy/run-k8s.sh            # default: npm cargo go, fresh jjlab per suite
+
+# one throwaway jjlab shared by all suites, then torn down
+./deploy/run-k8s.sh --once      # runs every suite
+
+# specific suites, pinned jjlab image tag
+JJLAB_TAG=v0.2.0 ./deploy/run-k8s.sh --once npm pypi swift
+```
+
+`run-k8s.sh` helm-installs a unique `jjlab-e2e` release (from jj-lab's own
+chart, renamed so it never collides with the real `jj-lab` deploy), runs each
+suite in its own runner container against it, captures each pod's stdout as the
+artifact, and uninstalls it — see `artifacts/k8s/<run-id>/`.
+
+Runner images are built via the shared buildkitd and pushed to the internal
+registry as `jjlab-e2e/runner-<cli>:<tag>`. Every OS package manager is
+rewired to **Aliyun mirrors** (`mirrors.aliyun.com`: apk, apt/debian, ubuntu,
+pip) inside the Dockerfile.
+
+### 2. Direct on host (all suites in one process)
+
+```sh
 ./run-all.sh
-
-# a subset
 ./run-all.sh npm cargo oci
-
-# against https ingress with an explicit token
 BASE=https://jj-lab.temp.10.199.64.20.nip.io WRITE_TOKEN=devtoken ./run-all.sh
 ```
 
