@@ -27,7 +27,7 @@ RR="$API/api/v1/repos/verify/$REPO"
 NS="${OPS_NS:-temp}"
 # Sandbox worker image: the same one ops-extension uses (zergx-worker in the
 # zergx registry). Overridable via OPS_WORKER_IMAGE.
-OPS_WORKER_IMAGE="${OPS_WORKER_IMAGE:-artifact.zergx.svc.cluster.local/zergx-worker:v0.0.4}"
+OPS_WORKER_IMAGE="${OPS_WORKER_IMAGE:-forgejo.develop.10.199.64.20.nip.io/root/zergx-worker:v0.0.4}"
 
 WAIT_TIMEOUT=${OPS_WAIT_TIMEOUT:-180}
 POLL=3

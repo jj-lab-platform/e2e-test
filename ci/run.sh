@@ -34,13 +34,7 @@ POLL=${CI_POLL_INTERVAL:-3}
 await_run_terminal() { # await_run_terminal <label> <run_id>
   local waited=0 runid="$2" st=""
   while [ "$waited" -lt "$WAIT_TIMEOUT" ]; do
-    st=$(curl_api "$AW/runs" 2>/dev/null | python3 -c "
-import sys,json
-try:
-  d=json.load(sys.stdin)
-  for r in d.get('runs',[]):
-    if str(r.get('id'))=='$runid': print(r.get('status','')); break
-except Exception: print('')")
+    st=$(curl_api "$AW/runs" 2>/dev/null | python3 -c 'import sys,json; d=json.load(sys.stdin); print(next((r.get("status","") for r in d.get("runs",[]) if str(r.get("id"))=="'"$runid"'"),""))')
     case "$st" in success|failure|skipped) echo "$st"; return 0;; esac
     sleep "$POLL"; waited=$((waited + POLL))
   done
@@ -48,10 +42,7 @@ except Exception: print('')")
 }
 
 first_job_id() { # first_job_id <run_id>
-  curl_api "$AW/runs/$1/jobs" 2>/dev/null | python3 -c "
-import sys, json
-try: print(json.load(sys.stdin)['jobs'][0]['id'])
-except Exception: print('')" 2>/dev/null
+  curl_api "$AW/runs/$1/jobs" 2>/dev/null | python3 -c 'import sys,json; d=json.load(sys.stdin); js=d.get("jobs",[]); print(js[0]["id"] if js else "")' 2>/dev/null
 }
 
 job_log() { curl_api "$AW/jobs/$1/logs" 2>/dev/null; }
@@ -80,10 +71,7 @@ assert_code "write .jjlab-ci.yml (push trigger)" 200 "$code"
 
 # ── A: push auto-enqueues a run
 sleep 5
-run_a=$(curl_api "$AW/runs" | python3 -c "
-import sys, json
-rs = json.load(sys.stdin).get('runs', [])
-print(rs[-1]['id'] if rs else '')")
+run_a=$(curl_api "$AW/runs" | python3 -c 'import sys,json; rs=json.load(sys.stdin).get("runs",[]); print(rs[-1]["id"] if rs else "")')
 [ -n "$run_a" ] && pass "A: push enqueued run $run_a" || fail "A: push enqueued run"
 [ -z "$run_a" ] && { echo "$PASS $FAIL $SKIP" > "$WORK/ci.result"; summary "ci"; exit 0; }
 
@@ -101,29 +89,24 @@ if [ -n "$jid" ]; then
 fi
 
 # ── C: parallel jobs — job b also ran in the same run
-njobs=$(curl_api "$AW/runs/$run_a/jobs" | python3 -c "
-import sys, json
-print(len(json.load(sys.stdin).get('jobs', [])))" 2>/dev/null || echo 0)
+njobs=$(curl_api "$AW/runs/$run_a/jobs" | python3 -c 'import sys,json; print(len(json.load(sys.stdin).get("jobs",[])))' 2>/dev/null || echo 0)
 assert_eq "C: both parallel jobs present" 2 "$njobs"
 
 # ── D: manual dispatch enqueues a new run
-WID=$(curl_api "$AW/workflows" | python3 -c "
-import sys,json
-for w in json.load(sys.stdin).get('workflows',[]):
-    if w.get('path')=='.jjlab-ci.yml': print(w.get('id')); break")
+WID=$(curl_api "$AW/workflows" | python3 -c 'import sys,json
+for w in json.load(sys.stdin).get("workflows",[]):
+    if w.get("path")==".jjlab-ci.yml": print(w.get("id")); break')
 [ -n "$WID" ] || WID=1
 code=$(curl_api -o /dev/null -w '%{http_code}' -X POST "$AW/workflows/$WID/dispatch")
 assert_code "D: workflow_dispatch accepted" 200 "$code"
-run_d=$(curl_api "$AW/runs" | python3 -c "
-import sys, json
-rs = json.load(sys.stdin).get('runs', [])
-print(rs[-1]['id'] if rs else '')")
+run_d=$(curl_api "$AW/runs" | python3 -c 'import sys,json; rs=json.load(sys.stdin).get("runs",[]); print(rs[-1]["id"] if rs else "")')
 st=$(await_run_terminal "D: dispatched run terminal" "$run_d")
 assert_eq "D: dispatched run status" "success" "$st"
 
 # ── E: pull_request — MR head update fires a run at the new head
+HEAD_SHA=$(curl_api "$R/branches" | python3 -c "import sys,json; print(json.load(sys.stdin)['branches'][0]['sha'])")
 code=$(curl_api -o /dev/null -w '%{http_code}' -X POST "$R/branches/feature" \
-  -H 'Content-Type: application/json' -d "{\"target\":\"$(curl_api "$R/branches" | python3 -c "import sys,json; print(json.load(sys.stdin)['branches'][0]['sha'])")"}")
+  -H 'Content-Type: application/json' -d "{\"target\":\"$HEAD_SHA\"}")
 assert_code "E: create feature branch" 200 "$code"
 
 WF_PR='name: CI
@@ -155,7 +138,8 @@ if [ "$n_after" -gt "$before" ]; then pass "E: pull_request enqueued a run"; els
 pr_run=$(echo "$after_runs" | python3 -c "import sys,json; print(json.load(sys.stdin)['runs'][-1]['id'])")
 st=$(await_run_terminal "E: pr run terminal" "$pr_run")
 assert_eq "E: pr run status" "success" "$st"
-pr_log=$(job_log "$(first_job_id "$pr_run")")
+pr_job=$(first_job_id "$pr_run")
+pr_log=$(job_log "$pr_job")
 assert_contains "E: pr run executed prcheck" "$pr_log" "pr-ci-ran"
 
 # ── teardown (best-effort; run rows go with the repo)
