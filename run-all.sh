@@ -40,6 +40,9 @@ SUITES=(
   generic
   oci
   auth
+  system
+  ci
+  ops
 )
 if [ $# -gt 0 ]; then SUITES=("$@"); fi
 

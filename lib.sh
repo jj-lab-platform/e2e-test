@@ -80,15 +80,46 @@ assert_contains() {
   case "$2" in *"$3"*) pass "$1";; *) fail "$1 (missing: $3)";; esac
 }
 
+# assert_json <label> <json-text> <jq-filter> <want>
+# Compares the value produced by `echo "$json" | python3 -c` against <want>.
+assert_json() {
+  local v
+  v=$(printf '%s' "$2" | python3 -c "import sys,json; d=json.load(sys.stdin); print($3)" 2>/dev/null || true)
+  if [ "$v" = "$4" ]; then pass "$1 ($4)"; else fail "$1 (want $4, got $v)"; fi
+}
+
+# assert_json_eq <label> <json-text> <python-expr>   (truthy/falsy)
+assert_json_ok() {
+  if printf '%s' "$2" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if ($3) else 1)" 2>/dev/null; then
+    pass "$1"
+  else
+    fail "$1"
+  fi
+}
+
 # All client invocations must bypass local env proxies — they reach the
 # registry via cluster DNS (not routed through mihomo).
 export no_proxy='*' NO_PROXY='*'
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY 2>/dev/null || true
 
-curl_api() { curl -s --noproxy '*' -H "Authorization: token $TOKEN" "$@"; }
+curl_api() { curl -s --noproxy '*' --max-time 30 -H "Authorization: token $TOKEN" "$@"; }
 
 # Anonymous variant for auth-matrix negative tests.
-curl_anon() { curl -s --noproxy '*' "$@"; }
+curl_anon() { curl -s --noproxy '*' --max-time 30 "$@"; }
+
+# curl_api with a single retry on transient 5xx (useful under parallel load when
+# jjlab sqlite may briefly report busy). Retries up to 2 times with 1s backoff.
+curl_api_retry() {
+  local attempt code
+  for attempt in 1 2 3; do
+    code=$(curl -s --noproxy '*' --max-time 30 -o /tmp/e2e-retry.$$ -w '%{http_code}' -H "Authorization: token $TOKEN" "$@")
+    case "$code" in
+      500|503) sleep 1; continue;;
+      *) cat /tmp/e2e-retry.$$; rm -f /tmp/e2e-retry.$$; return 0;;
+    esac
+  done
+  cat /tmp/e2e-retry.$$; rm -f /tmp/e2e-retry.$$
+}
 
 # Fresh scratch dir per project: dir <name>
 dir() { mkdir -p "$WORK/$1" && echo "$WORK/$1"; }

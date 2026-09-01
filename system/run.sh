@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# cargo: A/B/C
+# system: /pkgs/system admin surface (upstreams/proxy/packages) C/R/U/D.
 set -uo pipefail
 cd "$(dirname "$0")"
 source ../lib.sh
-section "cargo"
-LOG="$WORK/cargo.log"
+
+section "system"
+LOG="$WORK/system.log"
 : > "$LOG"
-for p in a-pull b-push c-consume d-mutate e-upgrade f-republish g-read; do
-  [ -f "$p/run.sh" ] && bash "$p/run.sh" >> "$LOG" 2>&1
-done
+if [ -f proxy/run.sh ]; then bash proxy/run.sh >> "$LOG" 2>&1; fi
 cat "$LOG"
 PASS=$(grep -c 'PASS:' "$LOG" || true); FAIL=$(grep -c 'FAIL:' "$LOG" || true); SKIP=$(grep -c 'SKIP:' "$LOG" || true)
 PASS=${PASS:-0}; FAIL=${FAIL:-0}; SKIP=${SKIP:-0}
-echo "$PASS $FAIL $SKIP" > "$WORK/cargo.result"
-summary "cargo"
+echo "$PASS $FAIL $SKIP" > "$WORK/system.result"
+summary "system"

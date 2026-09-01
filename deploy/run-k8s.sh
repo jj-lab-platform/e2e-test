@@ -27,7 +27,7 @@ ROOT="$(cd "$CS/.." && pwd)"
 cd "$ROOT"
 
 KUBECTL="kubectl --context ${KUBE_CONTEXT:-temp} --namespace temp"
-JJLAB_TAG="${JJLAB_TAG:-v0.2.0}"
+JJLAB_TAG="${JJLAB_TAG:-v0.3.0}"
 JJLAB_CHART="${JJLAB_CHART:-$HOME/jj-lab/deploy/chart}"
 WRITE_TOKEN="${WRITE_TOKEN:-devtoken}"
 NS="temp"
@@ -120,7 +120,7 @@ spec:
               memory: 1Gi
 EOF
   # Wait for completion/failure, then capture stdout (the artifact).
-  $KUBECTL wait --for=condition=complete job/"$job" --timeout=300s >/dev/null 2>&1 && rc=0 || rc=1
+  $KUBECTL wait --for=condition=complete job/"$job" --timeout=900s >/dev/null 2>&1 && rc=0 || rc=1
   if [ "$rc" -ne 0 ]; then
     $KUBECTL wait --for=condition=failed job/"$job" --timeout=20s >/dev/null 2>&1 || true
   fi

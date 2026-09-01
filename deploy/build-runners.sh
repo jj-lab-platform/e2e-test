@@ -36,6 +36,7 @@ declare -A BASE=(
   [auth]="library/alpine:3.24"
   [swift]="library/swift:latest"
   [net-preflight]="library/alpine:3.24"
+  [system]="library/alpine:3.24"
 )
 declare -A APK_PKGS=(
   [composer]="composer"

@@ -61,5 +61,35 @@ skopeo copy --src-tls-verify=false --dest-creds "x:$WRITE_TOKEN" "docker://$R/e2
 code=$(skopeo delete --tls-verify=false --creds "x:$WRITE_TOKEN" "docker://$R/e2e/$NAME:1.0.0" >/dev/null 2>&1; echo $?)
 [ "$code" = "0" ] && pass "C: skopeo delete" || fail "C: skopeo delete"
 
+# G: registry metadata endpoints — _catalog + tags/list.
+CC=$(curl_api "$API/v2/_catalog")
+assert_contains "G: _catalog repositories" "$CC" '"repositories"'
+CC=$(curl_api "$API/v2/e2e/$NAME/tags/list")
+assert_contains "G: tags/list lists 1.0.0" "$CC" '"1.0.0"'
+
+# H: chunked (PATCH) blob upload with resumed session + digest commit.
+H=$(dir oci-h)
+echo -n "chunked-oci-layer" > "$H/payload"
+H_SHA=$(sha256sum "$H/payload" | cut -d' ' -f1)
+# split into first half (PATCH) and second half (final PUT), same session.
+hsize=$(wc -c < "$H/payload")
+h1=$((hsize / 2))
+dd if="$H/payload" of="$H/chunk1" bs=1 count=$h1 2>/dev/null
+dd if="$H/payload" of="$H/chunk2" bs=1 skip=$h1 2>/dev/null
+# start session (POST, no digest) -> capture Location
+LOC=$(curl_api -i -X POST "$API/v2/e2e/$NAME/blobs/uploads/" 2>/dev/null | grep -i '^location:' | tr -d '\r' | awk '{print $2}' | sed 's|^/||')
+if [ -n "$LOC" ]; then
+  code=$(curl_api -o /dev/null -w '%{http_code}' -X PATCH -H 'Content-Type: application/octet-stream' --data-binary @"$H/chunk1" "$API/v2/$LOC")
+  assert_eq "H: PATCH chunk1 202" 202 "$code"
+  off=$((h1))
+  code=$(curl_api -o /dev/null -w '%{http_code}' -X PUT -H "Content-Range: $off-$((hsize-1))" --data-binary @"$H/chunk2" "$API/v2/$LOC?digest=sha256:$H_SHA")
+  assert_eq "H: final PUT commit 201" 201 "$code"
+  # blob now stat-able
+  code=$(curl_api -o /dev/null -w '%{http_code}' -I "$API/v2/e2e/$NAME/blobs/sha256:$H_SHA")
+  assert_eq "H: blob HEAD after commit 200" 200 "$code"
+else
+  fail "H: upload session Location missing"
+fi
+
 echo "$PASS $FAIL $SKIP" > "$WORK/oci.result"
 summary "oci"

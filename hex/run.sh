@@ -6,7 +6,7 @@ source ../lib.sh
 section "hex"
 LOG="$WORK/hex.log"
 : > "$LOG"
-for p in a-pull b-push c-consume d-mutate e-upgrade f-republish; do
+for p in a-pull b-push c-consume d-mutate e-upgrade f-republish g-read; do
   [ -f "$p/run.sh" ] && bash "$p/run.sh" >> "$LOG" 2>&1
 done
 cat "$LOG"
