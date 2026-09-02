@@ -184,11 +184,11 @@ finalize_upstreams() {
   local H="Authorization: token $WRITE_TOKEN"
   local CT="Content-Type: application/json"
   for spec in \
-    "npm|http://artifact.zergx.svc.cluster.local/pkgs/npm/" \
-    "cargo|http://artifact.zergx.svc.cluster.local/pkgs/cargo/index/" \
-    "cargo.index|http://artifact.zergx.svc.cluster.local/pkgs/cargo/index/" \
-    "cargo.static|http://artifact.zergx.svc.cluster.local/pkgs/cargo/" \
-    "go|http://artifact.zergx.svc.cluster.local/pkgs/go/"; do
+    "npm|http://jj-lab.temp.svc.cluster.local/pkgs/npm/" \
+    "cargo|http://jj-lab.temp.svc.cluster.local/pkgs/cargo/index/" \
+    "cargo.index|http://jj-lab.temp.svc.cluster.local/pkgs/cargo/index/" \
+    "cargo.static|http://jj-lab.temp.svc.cluster.local/pkgs/cargo/" \
+    "go|http://jj-lab.temp.svc.cluster.local/pkgs/go/"; do
     k="${spec%%|*}"; u="${spec##*|}"
     curl -s --noproxy '*' --max-time 15 -H "$H" -X PUT "$BASE/pkgs/system/upstreams/$k" -H "$CT" -d "{\"url\":\"$u\"}" >/dev/null 2>&1 || true
   done
