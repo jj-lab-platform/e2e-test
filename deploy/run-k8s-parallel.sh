@@ -24,7 +24,7 @@ cd "$ROOT"
 
 KUBECTL="kubectl --context ${KUBE_CONTEXT:-temp} --namespace temp"
 BASE="${BASE:-http://jj-lab.temp.svc.cluster.local}"
-REGISTRY="${REGISTRY:-artifact.temp.svc.cluster.local}"
+REGISTRY="${REGISTRY:-jj-lab.temp.svc.cluster.local}"
 RUN_TAG="${RUN_TAG:-dev}"
 WRITE_TOKEN="${WRITE_TOKEN:-devtoken}"
 NS="temp"

@@ -3,15 +3,15 @@
 #
 # One image per protocol CLI, so each container tests a single client against
 # the deployed jjlab service. Built via the shared buildkitd and pushed to the
-# internal artifact registry (artifact.temp.svc.cluster.local), no public net.
+# internal artifact registry (jj-lab.temp.svc.cluster.local), no public net.
 #
 #   buildctl --addr tcp://buildkitd.temp.svc.cluster.local:1234 build \
 #     --frontend dockerfile.v0 \
 #     --local context=<repo-root> \
 #     --local dockerfile=<repo-root>/deploy/runners \
-#     --opt build-arg:BASE=artifact.temp.svc.cluster.local/library/alpine:3.24 \
+#     --opt build-arg:BASE=jj-lab.temp.svc.cluster.local/library/alpine:3.24 \
 #     --opt build-arg:APK_PKGS=helm \
-#     --output type=image,name=artifact.temp.svc.cluster.local/jjlab-e2e/runner-helm:<tag>,push=true
+#     --output type=image,name=jj-lab.temp.svc.cluster.local/jjlab-e2e/runner-helm:<tag>,push=true
 
 ARG BASE
 FROM ${BASE}
