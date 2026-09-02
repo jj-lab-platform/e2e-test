@@ -9,7 +9,12 @@ export WORK="${WORK:-/work}"
 export BASE="${BASE:-http://jj-lab.temp.svc.cluster.local}"
 mkdir -p "$WORK" /out/artifacts
 
-bash "/e2e/$SUITE/run.sh"
+# A hard outer timeout guarantees the Job terminates even if a child (e.g. a
+# gradle daemon or a skopeo process) holds the stdout pipe open after the
+# suite's script finished. Prevents "stuck Running" jobs in the k8s parallel
+# orchestrator.
+SUITE_TIMEOUT="${SUITE_TIMEOUT:-600}"
+timeout "${SUITE_TIMEOUT}" bash "/e2e/$SUITE/run.sh"
 rc=$?
 
 echo "$rc" > /out/exit

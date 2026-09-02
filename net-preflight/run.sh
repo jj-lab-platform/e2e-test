@@ -7,13 +7,16 @@ section "net-preflight"
 
 FLAGS="$WORK/upstream.flags"
 : > "$FLAGS"
+# probe the in-cluster registry (BASE) — pull-through handles the public
+# upstream, so the runner never needs egress.
+BF="${BF:-${API:-${BASE:-http://jj-lab.temp.svc.cluster.local}}}"
 
 probe() { # probe <flag> <url> [proxy]
   local flag="$1" url="$2" p="${3:-}" code
   if [ -n "$p" ]; then
     code=$(env -u no_proxy -u NO_PROXY curl -s --max-time 12 -o /dev/null -w '%{http_code}' -x "$p" "$url" 2>/dev/null || true)
   else
-    code=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || true)
+    code=$(curl -s --noproxy '*' --max-time 8 -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || true)
   fi
   if [[ "$code" =~ ^[0-9]{3}$ ]] && [ "$code" -ge 200 ] && [ "$code" -lt 500 ]; then
     echo "$flag=1" >> "$FLAGS"
@@ -24,21 +27,23 @@ probe() { # probe <flag> <url> [proxy]
   fi
 }
 
-probe NPM_OK    "https://registry.npmjs.org/lodash"
-probe PYPI_OK   "https://pypi.org/simple/requests/"
-probe CARGO_OK  "https://index.crates.io/config.json"
-probe CARGO_STATIC_OK "https://static.crates.io/crates/anyhow/anyhow-1.0.86.crate"
-probe MAVEN_OK  "https://repo.maven.apache.org/maven2/junit/junit/maven-metadata.xml"
-probe COMPOSER_OK "https://repo.packagist.org/p2/symfony/console.json"
-probe NUGET_OK  "https://api.nuget.org/v3/index.json"
-probe RUBYGEMS_OK "https://index.rubygems.org/versions"
-probe HEX_OK    "https://hex.pm/api/packages/jason"
-probe PUB_OK    "https://pub.dev/api/packages/http"
-probe CONAN_OK  "https://center2.conan.io/v2/conans/search?q=zlib"
-MIHOMO="${MIHOMO_PROXY:-http://mihomo.develop.svc.cluster.local:7890}"
-probe DOCKER_OK "https://registry-1.docker.io/v2/" "$MIHOMO"
-probe GITHUB_OK "https://github.com/apple/swift-argument-parser" "$MIHOMO"
-probe GO_OK "https://proxy.golang.org/github.com/pkg/errors/@v/list" "$MIHOMO"
+# In-cluster pull-through reachability (jjlab serves all protocols; the
+# pull-through itself reaches the public upstream, so the runner needs no
+# egress). Probe the jjlab registry paths each protocol uses.
+probe NPM_OK    "$BF/pkgs/npm/lodash"
+probe PYPI_OK   "$BF/pkgs/pypi/simple/requests/"
+probe CARGO_OK  "$BF/pkgs/cargo/config.json"
+probe CARGO_STATIC_OK "$BF/pkgs/cargo/index/config.json"
+probe MAVEN_OK  "$BF/pkgs/maven/junit/junit/maven-metadata.xml"
+probe COMPOSER_OK "$BF/pkgs/composer/p2/symfony/console.json"
+probe NUGET_OK  "$BF/pkgs/nuget/v3/index.json"
+probe RUBYGEMS_OK "$BF/pkgs/rubygems/versions"
+probe HEX_OK    "$BF/pkgs/hex/api/packages/jason"
+probe PUB_OK    "$BF/pkgs/pub/api/packages/http"
+probe CONAN_OK  "$BF/pkgs/conan/v2/conans/search?q=zlib"
+probe DOCKER_OK "$BF/v2/"
+probe GITHUB_OK "$BF/pkgs/go/github.com/pkg/errors/@v/list"
+probe GO_OK     "$BF/pkgs/go/github.com/pkg/errors/@v/list"
 
 echo "$PASS $FAIL $SKIP" > "$WORK/net-preflight.result"
 summary "net-preflight"
